@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>To-Do List</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800 font-sans">
+
+<header class="bg-blue-700 fixed top-0 left-0 w-full text-white shadow-md z-50">
+  <div class="max-w-7xl mx-auto flex items-center justify-between p-4">
+    <h1 class="text-xl font-bold tracking-wide">✅ To-Do List</h1>
+  </div>
+</header>
+
+<main class="max-w-8xl mt-[15vh] mx-auto px-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+  <!-- Statistiques -->
+  <div class="bg-white shadow-md rounded-xl p-5">
+    <h3 class="text-lg font-semibold mb-2">📌 Tâches en cours</h3>
+    <p class="text-xl font-medium text-green-600" id="tachesEnCours">0</p>
+  </div>
+  <div class="bg-white shadow-md rounded-xl p-5">
+    <h3 class="text-lg font-semibold mb-2">✅ Tâches terminées</h3>
+    <p class="text-xl font-medium text-gray-500" id="tachesTerminees">0</p>
+  </div>
+
+  <!-- Section principale -->
+  <section class="lg:col-span-3 h-[80vh] bg-white rounded-xl shadow-lg p-6">
+    <h2 class="text-2xl font-bold mb-6 text-gray-700 border-b pb-2">Gestion des Tâches</h2>
+
+    <!-- Formulaire Ajouter -->
+    <form id="formAjouter" class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <input id="titre" placeholder="Titre" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none" required/>
+      <input id="description" placeholder="Description" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"/>
+      <div></div>
+      <button type="button" onclick="ajouterTache()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg px-4 py-2 transition">
+        + Ajouter
+      </button>
+    </form>
+
+    <!-- Table des tâches -->
+    <div class="overflow-x-auto max-h-[400px] overflow-y-auto rounded-lg shadow-inner">
+      <table class="min-w-full border border-gray-200 rounded-lg">
+        <thead class="bg-blue-50 border-b sticky top-0 z-10">
+        <tr>
+          <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600 uppercase tracking-wide">ID</th>
+          <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600 uppercase tracking-wide">Titre</th>
+          <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600 uppercase tracking-wide">Description</th>
+          <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600 uppercase tracking-wide">Statut</th>
+          <th class="px-4 py-2 text-center text-sm font-semibold text-gray-600 uppercase tracking-wide">Actions</th>
+        </tr>
+        </thead>
+        <tbody id="listeTaches"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer class="text-center mt-10 py-6 text-gray-500 text-sm">
+
+</footer>
+
+<script>
+  const baseUrl = '/taches';
+
+  async function chargerTaches() {
+    try {
+      const response = await fetch(baseUrl);
+      if (!response.ok) throw new Error('Erreur chargement tâches');
+      const taches = await response.json();
+
+      const tbody = document.getElementById('listeTaches');
+      tbody.innerHTML = '';
+
+      taches.forEach(tache => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-gray-50 transition';
+        tr.innerHTML = `
+          <td class="px-4 py-2">${tache.id}</td>
+          <td class="px-4 py-2">${tache.titre}</td>
+          <td class="px-4 py-2">${tache.description}</td>
+          <td class="px-4 py-2 ${tache.statut === 'EN_COURS' ? 'text-green-600' : 'text-gray-500'} font-medium">${tache.statut}</td>
+          <td class="px-4 py-2 text-center flex flex-col md:flex-row gap-3 justify-center">
+            <button onclick="modifierTache(${tache.id})" class="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-md text-sm font-medium transition">✏️ Modifier</button>
+            <button onclick="supprimerTache(${tache.id})" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium transition">🗑️ Supprimer</button>
+            <button onclick="terminerTache(${tache.id})" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-medium transition">✅ Terminer</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('tachesEnCours').textContent = taches.filter(t => t.statut === 'EN_COURS').length;
+      document.getElementById('tachesTerminees').textContent = taches.filter(t => t.statut === 'TERMINE').length;
+
+    } catch (err) {
+      console.error(err);
+      alert('Impossible de charger les tâches. Vérifie que le serveur Spring Boot est démarré.');
+    }
+  }
+
+  async function ajouterTache() {
+    const titre = document.getElementById('titre').value;
+    const description = document.getElementById('description').value;
+    if (!titre) return alert('Le titre est obligatoire');
+
+    await fetch(baseUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({titre, description, statut: 'EN_COURS'})
+    });
+
+    document.getElementById('titre').value = '';
+    document.getElementById('description').value = '';
+    chargerTaches();
+  }
+
+  async function modifierTache(id) {
+    const nouveauTitre = prompt('Nouveau titre :');
+    const nouvelleDescription = prompt('Nouvelle description :');
+    if (!nouveauTitre) return;
+
+    await fetch(`${baseUrl}/${id}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({titre: nouveauTitre, description: nouvelleDescription, statut: 'EN_COURS'})
+    });
+    chargerTaches();
+  }
+
+  async function supprimerTache(id) {
+    if (!confirm('Voulez-vous vraiment supprimer cette tâche ?')) return;
+    await fetch(`${baseUrl}/${id}`, {method: 'DELETE'});
+    chargerTaches();
+  }
+
+  async function terminerTache(id) {
+    await fetch(`${baseUrl}/${id}/terminee`, {method: 'PATCH'});
+    chargerTaches();
+  }
+
+  window.onload = chargerTaches;
+</script>
+
+</body>
+</html>
